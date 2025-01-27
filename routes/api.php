@@ -28,4 +28,11 @@ Route::group(['prefix' => 'v1'],function(){
         Route::post('signin','App\Http\Controllers\Authentication@SignIn');
         Route::post('signout','App\Http\Controllers\Authentication@SignOut')->middleware(['AuthGuard']);
     }); 
+
+    Route::fallback(function (){
+        return response()->json([
+            "status" => "not-found",
+            "message" => "Not found",
+        ],404);
+    });
 });

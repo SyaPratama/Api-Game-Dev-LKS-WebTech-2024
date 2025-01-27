@@ -25,7 +25,7 @@ class Authentication extends Controller
             ], 403);
         }
 
-        $user = administrators::create([
+        $user = User::create([
             'username' => $request->username,
             'password' => Hash::make($request->password),
             'created_at' => now('Asia/Jakarta'),
