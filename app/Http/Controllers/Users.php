@@ -10,24 +10,6 @@ use Illuminate\Support\Facades\Validator;
 
 class Users extends Controller
 {
-    public function getAdmin(Request $request)
-    {
-        $admin = administrators::all();
-        
-        if(administrators::find($request->get('user')?->id))
-        {
-            return response()->json([
-                'totalElements' => $admin->count(),
-                'content' => $admin,
-            ]);
-        }
-
-        return response()->json([
-            'status' => 'forbidden',
-            'message' => 'You are not the administrator',
-        ],403);
-    }
-
     public function createUser(Request $request)
     {
         $valid = Validator::make($request->all(),[
@@ -43,7 +25,7 @@ class Users extends Controller
             ], 403);
         }
 
-        if(!administrators::find($request->get('user')?->id))
+        if($request->get("role") !== "Admin")
         {
             return response()->json([
                 'status' => 'forbidden',
@@ -76,7 +58,7 @@ class Users extends Controller
     {
         $User = User::all();
         
-        if(administrators::find($request->get('user')?->id))
+        if($request->get('user') === "Admin")
         {
             return response()->json([
                 'totalElements' => $User->count(),
@@ -105,7 +87,7 @@ class Users extends Controller
             ], 403);
         }
 
-        if(!administrators::find($request->get('user')?->id))
+        if($request->get("role") !== "Admin")
         {
             return response()->json([
                 'status' => 'forbidden',
@@ -136,7 +118,7 @@ class Users extends Controller
 
     public function userDelete(Request $request, Int $id)
     {
-        if(!administrators::find($request->get('user')?->id))
+        if($request->get("role") !== "Admin")
         {
             return response()->json([
                 'status' => 'forbidden',

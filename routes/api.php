@@ -5,16 +5,21 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'v1'],function(){
     Route::middleware(['AuthGuard'])->group(function(){
-        Route::get('admins','App\Http\Controllers\Users@getAdmin');
         Route::post('users','App\Http\Controllers\Users@createUser');
         Route::get('users','App\Http\Controllers\Users@getUser');
         Route::put('users/{id}','App\Http\Controllers\Users@userUpdate');
         Route::delete('users/{id}','App\Http\Controllers\Users@userDelete');
     });
 
+    Route::group(["prefix" => 'admins'], function(){
+        Route::get('','App\Http\Controllers\Admins@getAdmin');
+        Route::post('','App\Http\Controllers\Admins@createAdmin');
+    });
+
     Route::group(['prefix' => 'games'], function(){
         Route::post('/{slug}/upload','App\Http\Controllers\Games@uploadGame');
         Route::middleware(['AuthGuard'])->group(function(){
+            Route::get('','App\Http\Controllers\Games@getGame');
             Route::post('/{slug}/scores','App\Http\Controllers\Scores@addScore');
             Route::get('/{slug}/scores','App\Http\Controllers\Scores@getScore');
             Route::post('/{slug}/{version}','App\Http\Controllers\Games@serveGame');

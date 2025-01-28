@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Game_Version;
 use Illuminate\Support\Str;
 use App\Models\Game;
+use App\Models\Score;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\File;
@@ -168,5 +170,32 @@ class Games extends Controller
             'deleted_at' => now('Asia/Jakarta'),
         ]);
         return response(status: 204);
+    }
+
+    public function getGame(Request $request)
+    {
+        $game = Game::all();
+        $pageStart = $request->query("page") ?? 0;
+        $pageSize = $request->query("size") ?? 10;
+        $sortBy = $request->query("sortBy") ?? "title";
+        $sortDir = $request->query("sortDir") ?? "asc";
+        $pageCount = ceil(count($game) /$pageSize);
+
+        foreach ($game as $key => $value) {
+            $scoreCount = Score::where("game_version_id",'=',Game_Version::where('game_id','=',$value->id)->first()->id)->count();
+            $gameResult = collect(Game::join("users","games.created_by","=","users.id")->where("users.id",'=',$value->created_by)->join("game__versions","games.id" ,"=","game__versions.game_id")->where("game__versions.game_id",'=',$value->id)->select("slug","title","description","game__versions.created_at as uploadTimestamp","users.username as author")->orderBy($sortBy,$sortDir)->paginate($pageSize,page:$pageStart,total:$pageCount))->toArray();
+            $gameResult["data"][0]["scoreCount"] = $scoreCount;
+            $gameBefore = $gameResult;
+            $gameResult = array_slice($gameResult["data"][0],0,3,true) + array("thumbnail" => null) + array_slice($gameResult["data"][0],3,count($gameResult["data"][0]));
+        }
+
+
+        return response()->json([
+            "page" => $pageStart,
+            "size" => $pageSize,
+            "totalElement" => count($game),
+            "lastPage" => $gameBefore["last_page"],
+            "content" => $gameResult,
+        ],200);
     }
 }

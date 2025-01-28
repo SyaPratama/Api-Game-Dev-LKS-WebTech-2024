@@ -47,12 +47,12 @@ class AuthGuardHandle
         if(strstr($user?->tokenable_type,'User'))
         {
             $user = User::find($user?->tokenable_id);
-            $request->merge(["user" => $user]);
+            $request->merge(["user" => $user,"role" => "User"]);
             event(new UserLoginProcess($user));
         } else if(strstr($user?->tokenable_type,'administrators'))
         {
             $user = administrators::find($user?->tokenable_id);
-            $request->merge(["user" => $user]);
+            $request->merge(["user" => $user, "role" => "Admin"]);
             event(new UserLoginProcess($user));
         }
 
