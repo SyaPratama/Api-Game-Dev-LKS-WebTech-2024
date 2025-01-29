@@ -6,6 +6,7 @@ use App\Models\Game_Version;
 use Illuminate\Support\Str;
 use App\Models\Game;
 use App\Models\Score;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +22,7 @@ class Games extends Controller
             'title' => 'required|min:3,|max:60',
             'description' => 'required|min:0|max:200',
         ]);
-        
+
         if ($valid->fails()) {
             return response()->json([
                 'status' => 'invalid',
@@ -88,6 +89,11 @@ class Games extends Controller
         $filename = time() . '_' . $file->getClientOriginalName();
         $filepath = $file->storeAs('uploads', $filename, 'public');
         $firstVersion = 1;
+
+        $findVersion = Game_Version::where("game_id", '=', $game->id)->get();
+        if (count($findVersion) > 0) {
+            $firstVersion = (int)($findVersion[count($findVersion) - 1]->version) + 1;
+        }
         Game_Version::create([
             'game_id' => $game->id,
             'version' => $firstVersion,
@@ -111,7 +117,7 @@ class Games extends Controller
                 'path' => $url,
             ], 200);
         }
-        return response(status:204);
+        return response(status: 204);
     }
 
     public function updateGame(Request $request, String $slug)
@@ -131,7 +137,7 @@ class Games extends Controller
 
         $Game = Game::where('slug', $slug);
 
-        if ($Game->firstOrFail()?->created_by === $request->get('user')?->id){
+        if ($Game->firstOrFail()?->created_by === $request->get('user')?->id) {
 
             $Game->update([
                 'title' => $request->title,
@@ -179,23 +185,42 @@ class Games extends Controller
         $pageSize = $request->query("size") ?? 10;
         $sortBy = $request->query("sortBy") ?? "title";
         $sortDir = $request->query("sortDir") ?? "asc";
-        $pageCount = ceil(count($game) /$pageSize);
+        $pageCount = ceil(count($game) / $pageSize);
+        $gameVersion = Game_Version::all();
+        $game = collect(Game::orderBy($sortBy, $sortDir)->paginate($pageSize, ["*"], 'page', $pageStart, $pageCount))->toArray()["data"];
+        $scores = Score::all();
 
-        foreach ($game as $key => $value) {
-            $scoreCount = Score::where("game_version_id",'=',Game_Version::where('game_id','=',$value->id)->first()->id)->count();
-            $gameResult = collect(Game::join("users","games.created_by","=","users.id")->where("users.id",'=',$value->created_by)->join("game__versions","games.id" ,"=","game__versions.game_id")->where("game__versions.game_id",'=',$value->id)->select("slug","title","description","game__versions.created_at as uploadTimestamp","users.username as author")->orderBy($sortBy,$sortDir)->paginate($pageSize,page:$pageStart,total:$pageCount))->toArray();
-            $gameResult["data"][0]["scoreCount"] = $scoreCount;
-            $gameBefore = $gameResult;
-            $gameResult = array_slice($gameResult["data"][0],0,3,true) + array("thumbnail" => null) + array_slice($gameResult["data"][0],3,count($gameResult["data"][0]));
-        }
+        $coll = collect($game)->map(
+            function ($game) use ($gameVersion, $scores) {
+                $versions = collect($gameVersion)->where("game_id", '=', $game["id"]);
 
+                if($versions->isNotEmpty())
+                {
+                    $lastVersion = $versions->last();
+                    $author = User::where("id",'=',$game["created_by"])->first();
+
+                    $scoreCount = collect($scores)->where("game_version_id",'=',$lastVersion->id)->count();
+
+                    return [
+                        "slug" => $game["slug"],
+                        "title" => $game["title"],
+                        "description" => $game["description"],
+                        "thumbnail" => null,
+                        "uploadTimestamp" => $game["created_at"],
+                        "author" => $author->username,
+                        "scoreCount" => $scoreCount,
+                    ];
+                }
+                return;
+            }
+
+        )->values();
 
         return response()->json([
             "page" => $pageStart,
             "size" => $pageSize,
             "totalElement" => count($game),
-            "lastPage" => $gameBefore["last_page"],
-            "content" => $gameResult,
-        ],200);
+            "content" => $coll
+        ], 200);
     }
 }
