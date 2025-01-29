@@ -27,9 +27,10 @@ class Scores extends Controller
 
         if(!$findSlug) return response()->json(["status" => "Not Found!", "message" => "Slug Didn't Found In Databases"],status: 404);
 
-        $gameVersion = Game_Version::where("game_id",$findSlug->id)->firstOrFail();
-
-        if(!$gameVersion) return response()->json(["status" => "Failed","message" => "No Game Version Already!"],404);
+        $gameVersion = Game_Version::where("game_id",$findSlug->id)->get();
+        
+        if(count($gameVersion) <= 0) return response()->json(["status" => "Failed","message" => "No Game Version Already!"],404);
+        $gameVersion = $gameVersion[count($gameVersion) -1 ];
 
         Score::create([
             "user_id" => $request->get('user')?->id,
